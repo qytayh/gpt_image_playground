@@ -95,7 +95,5 @@ export function isApiProxyLocked(proxyConfig: DevProxyConfig | null = readClient
 }
 
 export function shouldUseApiProxy(apiProxy: boolean, proxyConfig: DevProxyConfig | null = readClientDevProxyConfig()): boolean {
-  void apiProxy
-  void proxyConfig
-  return false
+  return isApiProxyLocked(proxyConfig) || (apiProxy && isApiProxyAvailable(proxyConfig))
 }

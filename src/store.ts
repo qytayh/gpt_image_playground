@@ -46,6 +46,7 @@ import { collectAgentRoundOutputImageSlots, extractAgentReferenceIds, getAgentCu
 import { IMAGE_FETCH_CORS_HINT } from './lib/imageApiShared'
 import { getFalErrorMessage, getFalQueuedImageResult } from './lib/falAiImageApi'
 import { getCustomQueuedImageResult } from './lib/openaiCompatibleImageApi'
+import { shouldUseApiProxy } from './lib/devProxy'
 import { validateMaskMatchesImage } from './lib/canvasImage'
 import { orderInputImagesForMask } from './lib/mask'
 import { getChangedParams, normalizeParamsForSettings } from './lib/paramCompatibility'
@@ -3722,7 +3723,7 @@ async function executeAgentRound(
     }
 
     let message = err instanceof Error ? err.message : String(err)
-    const usesApiProxy = activeProfile.apiProxy ?? requestSettings.apiProxy
+    const usesApiProxy = shouldUseApiProxy(activeProfile.apiProxy ?? requestSettings.apiProxy)
     const networkErrorHint = getApiRequestNetworkErrorHint(err, startedAt, usesApiProxy, activeProfile)
     if (networkErrorHint && !message.includes(IMAGE_FETCH_CORS_HINT)) {
       message += `\n${networkErrorHint}`
@@ -3954,7 +3955,7 @@ async function executeTask(taskId: string) {
       let errorMessage = err instanceof Error ? err.message : String(err)
       const settings = useStore.getState().settings
       const profile = getTaskApiProfile(settings, latestTask)
-      const usesApiProxy = profile?.apiProxy ?? settings.apiProxy
+      const usesApiProxy = shouldUseApiProxy(profile?.apiProxy ?? settings.apiProxy)
       const activeProfile = getActiveApiProfile(settings)
       const hintProfile = profile ?? {
         provider: latestTask.apiProvider ?? activeProfile.provider,

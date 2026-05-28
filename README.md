@@ -180,10 +180,13 @@ $env:VITE_DEFAULT_API_URL="https://api.openai.com/v1"; npm run deploy:cf
 
 项目内置 `docker-compose.yml`，默认将服务绑定到宿主机 `127.0.0.1:18787`，并限制只有 `image.nocode.qzz.io` 这个 Host 可以访问。服务器上的外层 Nginx / Caddy 只需要把域名反代到 `127.0.0.1:18787`。
 
+前端请求会固定走同源 `/api-proxy/...`，再由容器内 Nginx 转发到 `https://api.cooking.qzz.io/v1`，避免浏览器跨域限制。
+
 **当前固定配置：**
 
 - `PORT`：容器内 Nginx 监听端口，已固定为 `18787`。
 - `SERVER_NAME`：允许访问应用的域名，已固定为 `image.nocode.qzz.io`。Nginx 会拒绝未匹配该域名的 Host，因此直接用服务器 IP 访问会被关闭。
+- `API_PROXY_URL`：容器内代理上游，已固定为 `https://api.cooking.qzz.io/v1`。
 
 **启动：**
 

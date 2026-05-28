@@ -22,9 +22,9 @@ ENV HOST=0.0.0.0
 ENV PORT=18787
 ENV SERVER_NAME=image.nocode.qzz.io
 ENV DEFAULT_API_URL=
-ENV API_PROXY_URL=
-ENV ENABLE_API_PROXY=false
-ENV LOCK_API_PROXY=false
+ENV API_PROXY_URL=https://api.cooking.qzz.io/v1
+ENV ENABLE_API_PROXY=true
+ENV LOCK_API_PROXY=true
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY deploy/nginx.conf /etc/nginx/templates/default.conf.template

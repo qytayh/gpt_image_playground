@@ -7,6 +7,9 @@ services:
     environment:
       SERVER_NAME: image.nocode.qzz.io
       PORT: "18787"
+      API_PROXY_URL: https://api.cooking.qzz.io/v1
+      ENABLE_API_PROXY: "true"
+      LOCK_API_PROXY: "true"
     ports:
       - "127.0.0.1:18787:18787"
     restart: unless-stopped
