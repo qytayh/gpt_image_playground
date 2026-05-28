@@ -1,0 +1,12 @@
+services:
+  gpt-image-playground:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    image: gpt-image-playground:local
+    environment:
+      SERVER_NAME: image.nocode.qzz.io
+      PORT: "18787"
+    ports:
+      - "127.0.0.1:18787:18787"
+    restart: unless-stopped

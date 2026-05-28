@@ -19,7 +19,8 @@ RUN npm run build
 FROM nginx:alpine
 
 ENV HOST=0.0.0.0
-ENV PORT=80
+ENV PORT=18787
+ENV SERVER_NAME=image.nocode.qzz.io
 ENV DEFAULT_API_URL=
 ENV API_PROXY_URL=
 ENV ENABLE_API_PROXY=false
@@ -30,6 +31,6 @@ COPY deploy/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --chmod=755 deploy/migrate-api-env.envsh /docker-entrypoint.d/05-migrate-api-env.envsh
 COPY --chmod=755 deploy/inject-api-url.sh /docker-entrypoint.d/40-inject-api-url.sh
 
-EXPOSE 80
+EXPOSE 18787
 
 CMD ["nginx", "-g", "daemon off;"]

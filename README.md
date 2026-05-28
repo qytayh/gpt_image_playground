@@ -178,86 +178,37 @@ $env:VITE_DEFAULT_API_URL="https://api.openai.com/v1"; npm run deploy:cf
 <details>
 <summary><strong>🐳 方式三：Docker 部署</strong></summary>
 
-官方镜像已发布至 GitHub Container Registry。Docker 部署支持在运行时注入默认配置。
+项目内置 `docker-compose.yml`，默认将服务绑定到宿主机 `127.0.0.1:18787`，并限制只有 `image.nocode.qzz.io` 这个 Host 可以访问。服务器上的外层 Nginx / Caddy 只需要把域名反代到 `127.0.0.1:18787`。
 
-**环境变量说明：**
+**当前固定配置：**
 
-- `DEFAULT_API_URL`：设置页面上默认显示的 API 地址（如 `https://api.openai.com/v1`）。也支持填写 `.json` 配置 URL 或带 `settings` 参数的分享 URL 来导入自定义服务商配置（详见下方说明）。
-- `API_PROXY_URL`：配置内置代理实际转发到的完整 API 基础地址（仅开启代理时有效）。代理不会自动补 `/v1`，OpenAI 兼容接口通常必须填写到版本前缀，如 `https://api.openai.com/v1`。
-- `ENABLE_API_PROXY`：设为 `true` 开启容器内置 Nginx 同源代理，用于解决浏览器跨域（CORS）限制。开启后，前端 **API 代理** 开关默认开启，浏览器会请求同源的 `/api-proxy/{接口相对路径}`，再由 Nginx 拼接到 `API_PROXY_URL` 后转发；用户仍可在设置中手动关闭。
-- `LOCK_API_PROXY`：设为 `true` 时，在 `ENABLE_API_PROXY=true` 的前提下将前端 **API 代理** 开关强制锁定为开启，用户无法关闭。
-- `HOST` / `PORT`：指定容器内 Nginx 监听的地址和端口（默认 `0.0.0.0:80`）。
+- `PORT`：容器内 Nginx 监听端口，已固定为 `18787`。
+- `SERVER_NAME`：允许访问应用的域名，已固定为 `image.nocode.qzz.io`。Nginx 会拒绝未匹配该域名的 Host，因此直接用服务器 IP 访问会被关闭。
 
-> ⚠️ **安全警告**：开启 API 代理后，任何人都能将你的服务器作为代理来请求目标 API。建议仅在有访问控制（如 IP 白名单）或本地网络中开启。
-
-> 💡 **导入自定义服务商配置**：`DEFAULT_API_URL` 除了填写普通 API 地址外，也支持直接填写 `.json` 配置 URL 或带 `settings` 参数的分享 URL。设为配置 URL 时，页面启动后会自动导入其中的自定义服务商和 API 配置，设置页显示的是配置 JSON 中 profile 定义的 `baseUrl`（而非配置 URL 本身）。
-
-> 💡 **隐藏真实 API 地址**：如果不希望用户在前端看到真实的 API 上游地址，可以配合 `ENABLE_API_PROXY=true` 和 `LOCK_API_PROXY=true` 强制所有请求走服务器代理，再将 `API_PROXY_URL` 设为真实的 API 上游地址。根据使用的服务商类型，`DEFAULT_API_URL` 的填法不同：
->
-> - **OpenAI 兼容接口**：将 `DEFAULT_API_URL` 留空或填写一个占位地址（如 `https://proxy`）。
-> - **自定义服务商配置**：将 `DEFAULT_API_URL` 设为配置 URL（`.json` 或带 `settings` 参数的分享 URL），配置 JSON 中 profile 的 `baseUrl` 留空或填占位地址，并设置 `apiProxy:true`。
->
-> 这样前端设置页只会显示空值或占位地址，真实 API 地址仅存在于服务器侧的 `API_PROXY_URL`，不会暴露给用户。
->
-> 自定义服务商开启代理仅支持同步返回图片的配置；包含 `taskIdPath` 或 `poll` 的异步任务自定义服务商暂不支持 API 代理。
-
-> 💡 **兼容迁移**：旧版本中的 `API_URL` 已拆分为 `DEFAULT_API_URL` 和 `API_PROXY_URL`。容器启动时会自动将遗留的 `API_URL` 作为两个新变量的兜底值，实现无缝兼容。建议更新配置文件，逐步迁移至新变量。
-
-**1. Docker CLI 示例**
+**启动：**
 
 ```bash
-docker run -d -p 8080:80 \
-  -e DEFAULT_API_URL=https://api.openai.com/v1 \
-  -e ENABLE_API_PROXY=true \
-  -e LOCK_API_PROXY=true \
-  -e API_PROXY_URL=https://api.openai.com/v1 \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+docker compose up -d --build
 ```
 
-**隐藏真实 API 地址示例（OpenAI 兼容接口）：**
+**外层 Nginx 反代示例：**
 
-```bash
-docker run -d -p 8080:80 \
-  -e DEFAULT_API_URL= \
-  -e API_PROXY_URL=https://real-api.example.com/v1 \
-  -e ENABLE_API_PROXY=true \
-  -e LOCK_API_PROXY=true \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+```nginx
+server {
+    listen 80;
+    server_name image.nocode.qzz.io;
+
+    location / {
+        proxy_pass http://127.0.0.1:18787;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-> 上例中设置页的 API URL 为空，实际请求通过代理转发到 `API_PROXY_URL`。
-
-**隐藏真实 API 地址示例（同步自定义服务商配置）：**
-
-```bash
-docker run -d -p 8080:80 \
-  -e DEFAULT_API_URL='https://example.com/?settings={"customProviders":[...],"profiles":[{"baseUrl":"","apiProxy":true,...}]}' \
-  -e API_PROXY_URL=https://real-api.example.com/v1 \
-  -e ENABLE_API_PROXY=true \
-  -e LOCK_API_PROXY=true \
-  ghcr.io/cooksleep/gpt_image_playground:latest
-```
-
-> 上例中 `DEFAULT_API_URL` 为同步自定义服务商配置分享 URL，profile 的 `baseUrl` 留空且 `apiProxy:true`；真实 API 地址仅在 `API_PROXY_URL` 中配置，前端不可见。异步任务自定义服务商暂不支持开启代理。
-
-*(注：使用 host 网络时加 `--network host`，修改容器监听端口使用 `-e PORT=28080`)*
-
-**2. Docker Compose 示例**
-
-```yaml
-services:
-  gpt-image-playground:
-    image: ghcr.io/cooksleep/gpt_image_playground:latest
-    environment:
-      - DEFAULT_API_URL=https://api.openai.com/v1
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-```
-
-**更新说明：**
-
-使用 `latest` 标签时，重新拉取镜像并重启即可更新（如 `docker compose pull && docker compose up -d`）。若需固定版本可使用官方提供的版本号标签（如 `0.2.x`）。
+如果部署域名不是 `image.nocode.qzz.io`，同步修改 `docker-compose.yml` 里的 `SERVER_NAME` 和外层反代的 `server_name`。
 
 </details>
 
